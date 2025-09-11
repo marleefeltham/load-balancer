@@ -1,0 +1,9 @@
+lb_port: 8080
+strategy: round-robin
+backends:
+  - "http://localhost:8081"
+  - "http://localhost:8082"
+
+healthcheck_interval: 20   # seconds
+backend_timeout: 2 # seconds
+shutdown_timeout: 10 # seconds
