@@ -5,31 +5,35 @@ import (
 	"sync"
 )
 
+// lcServerPool implements the ServerPool interface with least connections strategy.
 type lcServerPool struct {
-	backends []backend.Backend
-	mux      sync.RWMutex
+	backends []backend.Backend // slice of servers
+	mux      sync.RWMutex      // RWMutex in read-heavy scenarios (lb has many reads)
 }
 
+// GetNextValidPeer returns the next alive backend server using least connections.
+// Returns nil if there is no alive backend found.
 func (s *lcServerPool) GetNextValidPeer() backend.Backend {
 	s.mux.RLock()
+	// Copy the backend slice to avoid holding the lock during selection.
 	copied := make([]backend.Backend, len(s.backends))
 	copy(copied, s.backends)
 	s.mux.RUnlock()
 
 	var lc backend.Backend
 
-	// find least connected peer
+	// Find least connected peer
 	for _, b := range copied {
-		// skip backends that are unalive
+		// Skip backends that are not alive
 		if !b.IsAlive() {
 			continue
 		}
-		// set the first alive backend
+		// Set the first alive backend
 		if lc == nil {
 			lc = b
 			continue
 		}
-		// update the least connected peer
+		// Update the least connected peer
 		if lc.GetActiveConnections() > b.GetActiveConnections() {
 			lc = b
 		}
@@ -38,6 +42,7 @@ func (s *lcServerPool) GetNextValidPeer() backend.Backend {
 	return lc
 }
 
+// GetBackends returns a copy of all backend servers in the least connections pool.
 func (s *lcServerPool) GetBackends() []backend.Backend {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
@@ -48,12 +53,14 @@ func (s *lcServerPool) GetBackends() []backend.Backend {
 	return copied
 }
 
+// AddBackend adds new backend server to the least connections pool.
 func (s *lcServerPool) AddBackend(b backend.Backend) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.backends = append(s.backends, b)
 }
 
+// GetServerPoolSize returns the current number of servers in the least connections pool.
 func (s *lcServerPool) GetServerPoolSize() int {
 	s.mux.RLock()
 	defer s.mux.RUnlock()

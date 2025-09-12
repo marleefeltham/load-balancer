@@ -5,13 +5,15 @@ import (
 	"sync"
 )
 
+// roundRobinServerPool implements the ServerPool interface with round-robin strategy.
 type roundRobinServerPool struct {
 	backends []backend.Backend // slice of servers
 	mux      sync.RWMutex      // RWMutex in read-heavy scenarios (lb has many reads)
-	current  int
+	current  int               // index of the last selected backend
 }
 
-// find next valid peer by rotating peers and return first alive (next valid) peer
+// GetNextValidPeer returns the next alive backend server using round-robin.
+// Returns nil if there is no alive backend found.
 func (s *roundRobinServerPool) GetNextValidPeer() backend.Backend {
 	s.mux.Lock()
 	defer s.mux.Unlock()
@@ -32,7 +34,7 @@ func (s *roundRobinServerPool) GetNextValidPeer() backend.Backend {
 	return nil
 }
 
-// returns backend servers in round robin pool
+// GetBackends returns a copy of all backend servers in the round-robin pool.
 func (s *roundRobinServerPool) GetBackends() []backend.Backend {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
@@ -43,14 +45,14 @@ func (s *roundRobinServerPool) GetBackends() []backend.Backend {
 	return copied
 }
 
-// adds new backend server to round robin pool
+// AddBackend adds new backend server to the round-robin pool.
 func (s *roundRobinServerPool) AddBackend(b backend.Backend) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.backends = append(s.backends, b)
 }
 
-// returns number of servers in the round robin pool
+// GetServerPoolSize returns the current number of servers in the round-robin pool.
 func (s *roundRobinServerPool) GetServerPoolSize() int {
 	s.mux.RLock()
 	defer s.mux.RUnlock()

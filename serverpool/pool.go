@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// interface for a server pool
+// ServerPool defines methods for managing backend servers and selecting a backend according to a load balancing strategy.
 type ServerPool interface {
 	GetBackends() []backend.Backend
 	GetNextValidPeer() backend.Backend
@@ -16,7 +16,8 @@ type ServerPool interface {
 	GetServerPoolSize() int
 }
 
-// constructor for a server pool using config load balancing strategy (default LC)
+// NewServerPool creates a new server pool using provided load balancing strategy (default round-robin).
+// Returns an error if the strategy is unsupported.
 func NewServerPool(strategy utils.LBStrategy) (ServerPool, error) {
 	switch strategy {
 	case utils.RoundRobin:
