@@ -7,9 +7,10 @@ import (
 
 // roundRobinServerPool implements the ServerPool interface with round-robin strategy.
 type roundRobinServerPool struct {
-	backends []backend.Backend // slice of servers
-	mux      sync.RWMutex      // RWMutex in read-heavy scenarios (lb has many reads)
-	current  int               // index of the last selected backend
+	backends   []backend.Backend   // slice of servers
+	backendMap map[string]struct{} // track urls
+	mux        sync.RWMutex        // RWMutex in read-heavy scenarios (lb has many reads)
+	current    int                 // index of the last selected backend
 }
 
 // GetNextValidPeer returns the next alive backend server using round-robin.
@@ -49,7 +50,12 @@ func (s *roundRobinServerPool) GetBackends() []backend.Backend {
 func (s *roundRobinServerPool) AddBackend(b backend.Backend) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
+	u := b.GetURL().String()
+	if _, exists := s.backendMap[u]; exists {
+		return
+	}
 	s.backends = append(s.backends, b)
+	s.backendMap[u] = struct{}{}
 }
 
 // GetServerPoolSize returns the current number of servers in the round-robin pool.

@@ -7,8 +7,9 @@ import (
 
 // lcServerPool implements the ServerPool interface with least connections strategy.
 type lcServerPool struct {
-	backends []backend.Backend // slice of servers
-	mux      sync.RWMutex      // RWMutex in read-heavy scenarios (lb has many reads)
+	backends   []backend.Backend   // slice of servers
+	backendMap map[string]struct{} // track urls
+	mux        sync.RWMutex        // RWMutex in read-heavy scenarios (lb has many reads)
 }
 
 // GetNextValidPeer returns the next alive backend server using least connections.
@@ -57,7 +58,12 @@ func (s *lcServerPool) GetBackends() []backend.Backend {
 func (s *lcServerPool) AddBackend(b backend.Backend) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
+	u := b.GetURL().String()
+	if _, exists := s.backendMap[u]; exists {
+		return
+	}
 	s.backends = append(s.backends, b)
+	s.backendMap[u] = struct{}{}
 }
 
 // GetServerPoolSize returns the current number of servers in the least connections pool.

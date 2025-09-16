@@ -22,12 +22,14 @@ func NewServerPool(strategy utils.LBStrategy) (ServerPool, error) {
 	switch strategy {
 	case utils.RoundRobin:
 		return &roundRobinServerPool{
-			backends: make([]backend.Backend, 0),
-			current:  0,
+			backends:   make([]backend.Backend, 0),
+			backendMap: make(map[string]struct{}),
+			current:    0,
 		}, nil
 	case utils.LeastConnected:
 		return &lcServerPool{
-			backends: make([]backend.Backend, 0),
+			backends:   make([]backend.Backend, 0),
+			backendMap: make(map[string]struct{}),
 		}, nil
 
 	default:

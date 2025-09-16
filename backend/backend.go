@@ -58,6 +58,18 @@ func (b *backend) GetActiveConnections() int {
 // ServehTTP forwards incoming client request to the backend's reverse proxy.
 // reverseProxy.ServeHTTP rewrites the request to match the destination backend server.
 func (b *backend) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Increment
+	b.mux.Lock()
+	b.connections++
+	b.mux.Unlock()
+
+	defer func() {
+		// Decrement after request finishes
+		b.mux.Lock()
+		b.connections--
+		b.mux.Unlock()
+	}()
+
 	b.reverseProxy.ServeHTTP(w, r)
 }
 
@@ -93,6 +105,11 @@ func (b *backend) SetErrorHandler(h func(http.ResponseWriter, *http.Request, err
 // NewBackend creates a new backend with the provided URL and initializes its reverse proxy.
 func NewBackend(u *url.URL) *backend {
 	proxy := httputil.NewSingleHostReverseProxy(u)
+
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		http.Error(w, "proxy error: "+err.Error(), http.StatusBadGateway)
+	}
+
 	return &backend{
 		url:          u,
 		alive:        true,
